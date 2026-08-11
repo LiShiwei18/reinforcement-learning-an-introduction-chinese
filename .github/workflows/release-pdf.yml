@@ -1,4 +1,5 @@
 name: Release PDF
+
 on:
   workflow_dispatch:
 
@@ -6,24 +7,42 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     container:
       image: qiwihui/docker-sphinx-cjk-pdf
+
     steps:
     - name: Checkout
       uses: actions/checkout@v1
+
     - name: Install dependencies
       run: |
         pip3 install -U -r requirements.txt
+
     - name: build pdf
       run: |
         make latexpdf
-    - name: upload pdf asset
-      uses: softprops/action-gh-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # 手动 Run workflow 时：
+    # 把生成的 PDF 保存为 Actions Artifact
+    - name: upload pdf artifact
+      if: github.event_name == 'workflow_dispatch'
+      uses: actions/upload-artifact@v7
+      with:
+        name: reinforcement-learning-an-introduction-chinese
+        path: ./build/latex/reinforcement-learning-an-introduction-chinese.pdf
+        if-no-files-found: error
+
+    # push v* tag 时：
+    # 创建 GitHub Release，并把 PDF 放到 Release Assets
+    - name: upload pdf release asset
+      if: github.ref_type == 'tag'
+      uses: softprops/action-gh-release@v3
       with:
         draft: false
         prerelease: false
